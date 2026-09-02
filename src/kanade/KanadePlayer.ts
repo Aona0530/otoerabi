@@ -139,5 +139,7 @@ export function stopTheme(): void {
 export async function previewNote(midi: number, instrument: KanadeInstrument): Promise<void> {
   await Tone.start();
   const inst = instrument === 'piano' ? getPianoSampler() : getKoto();
+  // サンプル未ロードのまま鳴らすと落ちるため、ピアノはロード完了を待つ
+  if (instrument === 'piano') await preloadPiano();
   inst.triggerAttackRelease(midiToName(midi), 0.35);
 }
