@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ChevronLeft,
   Download,
+  Loader2,
   Play,
   RefreshCw,
   Sparkles,
@@ -26,7 +27,8 @@ import { NoteBubble } from '@/components/note-compose/NoteBubble';
 import { KanadeScore } from '@/kanade/KanadeScore';
 import { DEG_LABELS, THEME_BARS, degToMidi } from '@/kanade/scale';
 import { playTheme, previewNote, stopTheme } from '@/kanade/KanadePlayer';
-import { GM_PROGRAMS, downloadFile, toMidi, toSongData } from '@/kanade/exporters';
+import { downloadBlob, toSongData } from '@/kanade/exporters';
+import { exportSongToMp3 } from '@/kanade/audioExport';
 import { MOOD_PRESETS, getMoodPreset } from '@/constants/noteComposeMoods';
 
 const BASE = 'bg-orange-50';
@@ -124,7 +126,23 @@ export function NoteComposePage() {
   const s = useNoteComposeStore();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [saving, setSaving] = useState(false);
   const awarded = useRef(false);
+
+  async function saveMp3() {
+    const p = s.moodId ? getMoodPreset(s.moodId) : null;
+    if (!s.finalResult || !p || saving) return;
+    setSaving(true);
+    stopAll();
+    try {
+      const blob = await exportSongToMp3(s.finalResult.notes, s.finalResult.accompaniment, p.bpm);
+      downloadBlob('おとえらび.mp3', blob);
+    } catch (e) {
+      console.error('MP3書き出しに失敗:', e);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // 入場時に新しいゲームとして初期化
   useEffect(() => {
@@ -497,19 +515,26 @@ export function NoteComposePage() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+            <div className="flex flex-col items-center gap-2 w-full">
               <button
-                onClick={() =>
-                  downloadFile(
-                    'note-compose.mid',
-                    toMidi(s.finalResult!.notes, preset.bpm, GM_PROGRAMS.piano),
-                    'audio/midi',
-                  )
-                }
-                className="flex items-center gap-2 px-5 min-h-12 rounded-2xl border-2 border-orange-300 text-orange-700 font-bold"
+                onClick={saveMp3}
+                disabled={saving}
+                className={[
+                  'flex items-center gap-2 px-6 min-h-[56px] rounded-2xl font-black text-white shadow-md transition-all',
+                  saving ? 'bg-orange-300 cursor-wait' : 'bg-orange-500 active:scale-95 hover:brightness-105',
+                ].join(' ')}
               >
-                <Download size={18} /> MIDIをほぞん
+                {saving ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" /> ほぞんちゅう…
+                  </>
+                ) : (
+                  <>
+                    <Download size={20} /> 音楽をほぞん！
+                  </>
+                )}
               </button>
+              {saving && <p className="text-xs text-orange-500">MP3を つくっています（すこし まってね）</p>}
             </div>
 
             <div className="flex flex-col gap-3 w-full">

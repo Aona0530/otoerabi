@@ -9,7 +9,8 @@
 
 import * as Tone from 'tone';
 
-const BASE_URL = `${import.meta.env.BASE_URL}samples/piano/`;
+/** サンプルの配信ベースURL（GitHub Pages のサブパスにも追従） */
+export const PIANO_BASE_URL = `${import.meta.env.BASE_URL}samples/piano/`;
 
 /** ロードするサンプル（キー=Tone音名、値=ファイル名）。ファイルは "s"=♯ 表記 */
 function buildSampleMap(): Record<string, string> {
@@ -24,6 +25,9 @@ function buildSampleMap(): Record<string, string> {
   return map;
 }
 
+/** サンプルマップ（realtime再生・オフライン書き出しで共用） */
+export const PIANO_SAMPLE_MAP = buildSampleMap();
+
 let sampler: Tone.Sampler | null = null;
 let reverb: Tone.Reverb | null = null;
 let loadPromise: Promise<void> | null = null;
@@ -36,8 +40,8 @@ export function getPianoSampler(): Tone.Sampler {
       resolveLoad = res;
     });
     sampler = new Tone.Sampler({
-      urls: buildSampleMap(),
-      baseUrl: BASE_URL,
+      urls: PIANO_SAMPLE_MAP,
+      baseUrl: PIANO_BASE_URL,
       release: 1.2,
       onload: () => resolveLoad(),
     }).connect(reverb);

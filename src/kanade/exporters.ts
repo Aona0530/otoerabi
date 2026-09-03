@@ -80,6 +80,16 @@ export function toMidi(notes: KNote[], bpm: number, program: number): Uint8Array
   return new Uint8Array([...header, ...trackHeader, ...track]);
 }
 
+/** Blob をそのままダウンロードさせる */
+export function downloadBlob(filename: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** ブラウザでファイルをダウンロードさせる */
 export function downloadFile(filename: string, data: Uint8Array | string, mime: string): void {
   const blob =
