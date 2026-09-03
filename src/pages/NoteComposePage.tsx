@@ -14,6 +14,8 @@ import {
   ArrowRight,
   ChevronLeft,
   Download,
+  Globe,
+  Instagram,
   Loader2,
   Play,
   RefreshCw,
@@ -556,6 +558,33 @@ export function NoteComposePage() {
               >
                 さいしょに もどる
               </button>
+            </div>
+
+            {/* ── 最新情報 ── */}
+            <div className="w-full mt-2 rounded-[1.75rem] bg-white border-4 border-orange-100 p-5 flex flex-col items-center gap-3 shadow">
+              <p className="text-lg font-black text-orange-800">
+                最新情報は ここを チェック！
+              </p>
+              <a
+                href="https://www.instagram.com/otono_jikan/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[60px] rounded-2xl text-white text-lg font-black flex items-center justify-center gap-2 shadow active:scale-95 transition-all hover:brightness-105"
+                style={{ background: 'linear-gradient(135deg, #F58529, #DD2A7B, #8134AF)' }}
+              >
+                <Instagram size={22} />
+                Instagram
+              </a>
+              <a
+                href="https://otonojikan.studio.site/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[60px] rounded-2xl bg-white text-orange-700 text-lg font-black border-4 border-orange-300 flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-orange-50"
+              >
+                <Globe size={22} />
+                こうしきサイト
+              </a>
+              <p className="text-xs font-bold text-orange-400">おとの じかん</p>
             </div>
           </section>
         )}
