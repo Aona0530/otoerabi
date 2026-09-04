@@ -11,3 +11,22 @@ body {
   -webkit-tap-highlight-color: transparent;
   font-family: system-ui, -apple-system, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
 }
+
+/*
+ * スマホのタップ反応を良くする:
+ *  - touch-action: manipulation … ダブルタップ拡大待ちの遅延をなくす（ページ全体の拡大は可能なまま）
+ *  - user-select: none … 長押しでテキスト選択されて誤操作になるのを防ぐ
+ */
+button,
+a {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 端末が「動きを減らす」設定のときは浮遊アニメーションを止める（省電力・酔い防止） */
+@media (prefers-reduced-motion: reduce) {
+  .note-bubble {
+    animation: none !important;
+  }
+}

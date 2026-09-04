@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Headphones, Music, Play, Sparkles, Square } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { preloadPiano } from '@/services/PianoSynth';
 import { getLevel } from '@/types';
 import { NoteComposePage } from '@/pages/NoteComposePage';
 
@@ -15,9 +16,11 @@ function TitlePage() {
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 画面を離れるときに ObjectURL を解放
+  // タイトルを見ている間にピアノ音源を先読みしておく（ゲーム開始時の待ちをなくす）
   useEffect(() => {
+    const id = setTimeout(() => void preloadPiano(), 300);
     return () => {
+      clearTimeout(id);
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);

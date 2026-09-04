@@ -9,7 +9,7 @@
  * ⑥ かんせい                      … 再生・EXP・ライブラリ保存
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ChevronLeft,
@@ -29,6 +29,7 @@ import { NoteBubble } from '@/components/note-compose/NoteBubble';
 import { KanadeScore } from '@/kanade/KanadeScore';
 import { DEG_LABELS, THEME_BARS, degToMidi } from '@/kanade/scale';
 import { playTheme, previewNote, stopTheme } from '@/kanade/KanadePlayer';
+import { preloadPiano } from '@/services/PianoSynth';
 import { downloadBlob, toSongData } from '@/kanade/exporters';
 import { exportSongToMp3 } from '@/kanade/audioExport';
 import { MOOD_PRESETS, getMoodPreset } from '@/constants/noteComposeMoods';
@@ -129,7 +130,10 @@ export function NoteComposePage() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [saving, setSaving] = useState(false);
+  const [pianoReady, setPianoReady] = useState(false);
   const awarded = useRef(false);
+  /** 再生準備中の多重タップを無視するためのフラグ */
+  const preparingRef = useRef(false);
 
   async function saveMp3() {
     const p = s.moodId ? getMoodPreset(s.moodId) : null;
@@ -146,11 +150,18 @@ export function NoteComposePage() {
     }
   }
 
-  // 入場時に新しいゲームとして初期化
+  // 入場時に新しいゲームとして初期化＋音源の先読みを開始（UIはブロックしない）
   useEffect(() => {
     s.reset();
     awarded.current = false;
-    return () => stopTheme();
+    let alive = true;
+    preloadPiano().then(() => {
+      if (alive) setPianoReady(true);
+    });
+    return () => {
+      alive = false;
+      stopTheme();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -161,20 +172,27 @@ export function NoteComposePage() {
     bpm: number,
     accomp?: { start: number; dur: 1 | 2 | 4; midi: number }[],
   ) {
+    // 音源ロード中に連打されると Part が多重生成されるので弾く
+    if (preparingRef.current) return;
+    preparingRef.current = true;
     stopTheme();
     setPlayingId(id);
     setActiveIdx(-1);
-    await playTheme(
-      notes,
-      bpm,
-      'piano',
-      (i) => setActiveIdx(i),
-      () => {
-        setPlayingId(null);
-        setActiveIdx(-1);
-      },
-      accomp && accomp.length ? accomp : undefined,
-    );
+    try {
+      await playTheme(
+        notes,
+        bpm,
+        'piano',
+        (i) => setActiveIdx(i),
+        () => {
+          setPlayingId(null);
+          setActiveIdx(-1);
+        },
+        accomp && accomp.length ? accomp : undefined,
+      );
+    } finally {
+      preparingRef.current = false;
+    }
   }
   function stopAll() {
     stopTheme();
@@ -182,10 +200,16 @@ export function NoteComposePage() {
     setActiveIdx(-1);
   }
 
-  function tapBubble(deg: number, toggle: boolean) {
+  // 玉のタップ処理は毎回同じ関数参照にして、NoteBubble(memo) の再描画を防ぐ
+  const tapFirstNote = useCallback((deg: number) => {
     previewNote(degToMidi(deg), 'piano');
-    if (toggle) s.toggleDeg(deg);
-  }
+    useNoteComposeStore.getState().selectFirst(deg);
+  }, []);
+
+  const tapPickNote = useCallback((deg: number) => {
+    previewNote(degToMidi(deg), 'piano');
+    useNoteComposeStore.getState().toggleDeg(deg);
+  }, []);
 
   // ── ナビゲーション ──
   function goBack() {
@@ -246,6 +270,14 @@ export function NoteComposePage() {
 
         <StepDots step={s.step} />
 
+        {/* 音源ロード中の案内（ボタンは押せるが音はまだ出ない、を明示する） */}
+        {!pianoReady && (
+          <p className="flex items-center justify-center gap-2 text-sm font-bold text-orange-500 bg-orange-100 rounded-2xl py-2">
+            <Loader2 size={16} className="animate-spin" />
+            ピアノの おとを よみこみちゅう…
+          </p>
+        )}
+
         {/* ════════ ① さいしょの音 ════════ */}
         {s.step === 'first-note' && (
           <section className="flex flex-col gap-6 items-center">
@@ -258,14 +290,12 @@ export function NoteComposePage() {
                 return (
                   <NoteBubble
                     key={deg}
+                    deg={deg}
                     label={label}
                     hue={hueFor(deg)}
                     selected={s.firstDeg === deg}
                     floatDelay={i * 0.5}
-                    onTap={() => {
-                      previewNote(degToMidi(deg), 'piano');
-                      s.selectFirst(deg);
-                    }}
+                    onTap={tapFirstNote}
                   />
                 );
               })}
@@ -296,13 +326,14 @@ export function NoteComposePage() {
                   return (
                     <NoteBubble
                       key={deg}
+                      deg={deg}
                       label={label}
                       sub={sub}
                       hue={hueFor(deg)}
                       selected={selected}
                       disabled={full}
                       floatDelay={(i % 5) * 0.4}
-                      onTap={() => tapBubble(deg, true)}
+                      onTap={tapPickNote}
                     />
                   );
                 })}

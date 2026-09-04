@@ -12,16 +12,22 @@ import * as Tone from 'tone';
 /** サンプルの配信ベースURL（GitHub Pages のサブパスにも追従） */
 export const PIANO_BASE_URL = `${import.meta.env.BASE_URL}samples/piano/`;
 
-/** ロードするサンプル（キー=Tone音名、値=ファイル名）。ファイルは "s"=♯ 表記 */
+/**
+ * ロードするサンプル（キー=Tone音名、値=ファイル名）。ファイルは "s"=♯ 表記。
+ *
+ * 実使用音域は MIDI 36(C2)〜79(G5)（伴奏 C2-A3 / メロディ C4-G5）なので
+ * オクターブ2〜5 の3半音刻み＝16音だけを読み込む。
+ * 各サンプルは 3.5秒・96kbps モノラルに切り詰め済み（合計約0.7MB）。
+ * ※ スマホ回線での初回ロードを軽くするため意図的に絞っている。
+ */
 function buildSampleMap(): Record<string, string> {
   const map: Record<string, string> = {};
-  for (let oct = 1; oct <= 7; oct++) {
+  for (let oct = 2; oct <= 5; oct++) {
     map[`C${oct}`] = `C${oct}.mp3`;
     map[`D#${oct}`] = `Ds${oct}.mp3`;
     map[`F#${oct}`] = `Fs${oct}.mp3`;
     map[`A${oct}`] = `A${oct}.mp3`;
   }
-  map['C8'] = 'C8.mp3';
   return map;
 }
 
@@ -50,15 +56,27 @@ export function getPianoSampler(): Tone.Sampler {
   return sampler;
 }
 
+let ready = false;
+
+/** サンプル・リバーブとも準備完了しているか（同期判定・UIの出し分け用） */
+export function isPianoReady(): boolean {
+  return ready;
+}
+
 /**
  * 初回再生前に呼ぶ。以下の非同期準備をすべて待つ:
  *  - サンプル(mp3)の読み込み
  *  - Reverb のインパルス応答（畳み込みバッファ）の生成
  * どちらか未完了のまま再生すると「buffer is not loaded」で落ちるため。
+ *
+ * UIをブロックしたくない箇所では await せずに呼び（先読みだけ走らせ）、
+ * isPianoReady() で鳴らせるかを判定する。
  */
 export function preloadPiano(): Promise<void> {
   const s = getPianoSampler();
   const sampleReady = s.loaded ? Promise.resolve() : (loadPromise ?? Promise.resolve());
   const reverbReady = reverb ? reverb.ready : Promise.resolve();
-  return Promise.all([sampleReady, reverbReady]).then(() => undefined);
+  return Promise.all([sampleReady, reverbReady]).then(() => {
+    ready = true;
+  });
 }

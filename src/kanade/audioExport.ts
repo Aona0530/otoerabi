@@ -9,7 +9,6 @@
  */
 
 import * as Tone from 'tone';
-import { Mp3Encoder } from '@breezystack/lamejs';
 import type { KNote } from './scale';
 import { midiToName } from './scale';
 import { PIANO_BASE_URL, PIANO_SAMPLE_MAP } from '@/services/PianoSynth';
@@ -67,8 +66,13 @@ function floatToInt16(input: Float32Array): Int16Array {
   return out;
 }
 
-/** AudioBuffer → MP3(Blob)。128kbps ステレオ */
-function encodeMp3(buffer: AudioBuffer): Blob {
+/**
+ * AudioBuffer → MP3(Blob)。128kbps ステレオ。
+ * エンコーダは「音楽をほぞん」を押したときだけ動的に読み込む
+ * （初期表示のJSを軽くするため）。
+ */
+async function encodeMp3(buffer: AudioBuffer): Promise<Blob> {
+  const { Mp3Encoder } = await import('@breezystack/lamejs');
   const channels = Math.min(2, buffer.numberOfChannels);
   const encoder = new Mp3Encoder(channels, buffer.sampleRate, 128);
   const left = floatToInt16(buffer.getChannelData(0));
@@ -95,5 +99,5 @@ export async function exportSongToMp3(
   bpm: number,
 ): Promise<Blob> {
   const buffer = await renderSong(melody, accompaniment, bpm);
-  return encodeMp3(buffer);
+  return await encodeMp3(buffer);
 }

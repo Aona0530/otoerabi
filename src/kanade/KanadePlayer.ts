@@ -6,7 +6,7 @@
  */
 
 import * as Tone from 'tone';
-import { getPianoSampler, preloadPiano } from '@/services/PianoSynth';
+import { getPianoSampler, isPianoReady, preloadPiano } from '@/services/PianoSynth';
 import type { KNote } from './scale';
 import { midiToName } from './scale';
 
@@ -135,11 +135,20 @@ export function stopTheme(): void {
   stopTransport();
 }
 
-/** 入力時のワンショット・プレビュー */
-export async function previewNote(midi: number, instrument: KanadeInstrument): Promise<void> {
-  await Tone.start();
-  const inst = instrument === 'piano' ? getPianoSampler() : getKoto();
-  // サンプル未ロードのまま鳴らすと落ちるため、ピアノはロード完了を待つ
-  if (instrument === 'piano') await preloadPiano();
-  inst.triggerAttackRelease(midiToName(midi), 0.35);
+/**
+ * 入力時のワンショット・プレビュー。
+ *
+ * 【重要】ここでは絶対に await でブロックしない。
+ * サンプル未ロード時に待つと、スマホ回線ではタップが数秒無反応になるため、
+ * 先読みだけ開始して「まだ鳴らせないなら鳴らさずに即座に返す」。
+ */
+export function previewNote(midi: number, instrument: KanadeInstrument): void {
+  void Tone.start(); // 初回ジェスチャでオーディオを解錠（待たない）
+  if (instrument === 'piano') {
+    void preloadPiano(); // 先読みを始めるだけ
+    if (!isPianoReady()) return; // 準備前は無音でスキップ（UIは止めない）
+    getPianoSampler().triggerAttackRelease(midiToName(midi), 0.35);
+    return;
+  }
+  getKoto().triggerAttackRelease(midiToName(midi), 0.35);
 }
