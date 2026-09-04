@@ -7,6 +7,7 @@
 
 import * as Tone from 'tone';
 import { getPianoSampler, isPianoReady, preloadPiano } from '@/services/PianoSynth';
+import { unlockAudioForSilentMode } from '@/services/silentMode';
 import type { KNote } from './scale';
 import { midiToName } from './scale';
 
@@ -58,6 +59,7 @@ export async function playTheme(
   onEnd: () => void,
   accompNotes?: KNote[],
 ): Promise<PlayHandle> {
+  unlockAudioForSilentMode(); // 消音スイッチ中でも鳴るようにする
   await Tone.start();
   stopTheme();
 
@@ -143,6 +145,7 @@ export function stopTheme(): void {
  * 先読みだけ開始して「まだ鳴らせないなら鳴らさずに即座に返す」。
  */
 export function previewNote(midi: number, instrument: KanadeInstrument): void {
+  unlockAudioForSilentMode(); // 消音スイッチ中でも鳴るようにする
   void Tone.start(); // 初回ジェスチャでオーディオを解錠（待たない）
   if (instrument === 'piano') {
     void preloadPiano(); // 先読みを始めるだけ

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Headphones, Music, Play, Sparkles, Square } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { preloadPiano } from '@/services/PianoSynth';
+import { enableSilentModePlayback, unlockAudioForSilentMode } from '@/services/silentMode';
 import { getLevel } from '@/types';
 import { NoteComposePage } from '@/pages/NoteComposePage';
 
@@ -18,6 +19,7 @@ function TitlePage() {
 
   // タイトルを見ている間にピアノ音源を先読みしておく（ゲーム開始時の待ちをなくす）
   useEffect(() => {
+    enableSilentModePlayback(); // 消音スイッチ対策は早めに適用しておく
     const id = setTimeout(() => void preloadPiano(), 300);
     return () => {
       clearTimeout(id);
@@ -47,6 +49,7 @@ function TitlePage() {
     // 読み込み後に自動再生
     const audio = audioRef.current;
     if (audio) {
+      unlockAudioForSilentMode(); // 消音スイッチ中でも鳴るようにする
       audio.src = url;
       audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     }
@@ -60,6 +63,7 @@ function TitlePage() {
       audio.currentTime = 0;
       setPlaying(false);
     } else {
+      unlockAudioForSilentMode();
       audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     }
   }
